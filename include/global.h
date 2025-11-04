@@ -22,4 +22,12 @@ extern String wifi_password ;
 
 extern boolean isWifiConnected;
 extern SemaphoreHandle_t xBinarySemaphoreInternet;
+
+typedef struct {
+    float temperature;
+    float humidity;
+} SensorData;
+
+extern QueueHandle_t qSensorData;
+extern SemaphoreHandle_t semSensorData;
 #endif

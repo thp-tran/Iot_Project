@@ -14,3 +14,8 @@ String wifi_ssid = "abcde";
 String wifi_password = "123456789";
 boolean isWifiConnected = false;
 SemaphoreHandle_t xBinarySemaphoreInternet = xSemaphoreCreateBinary();
+
+QueueHandle_t qSensorData = xQueueCreate(1, sizeof(SensorData));
+SemaphoreHandle_t semSensorData = xSemaphoreCreateBinary();
+
+
