@@ -13,8 +13,15 @@ bool connecting = false;
 
 String mainPage()
 {
-  float temperature = glob_temperature;
-  float humidity = glob_humidity;
+  float hum;
+  float temp;
+  SensorData recv3;
+  if(xSemaphoreTake(semSensorData, portMAX_DELAY) == pdTRUE){
+    if(xQueuePeek(qSensorData, &recv3, 0) == pdTRUE){
+        hum = recv3.humidity;
+        temp = recv3.temperature;
+      }
+  }
   String led1 = led1_state ? "ON" : "OFF";
   String led2 = led2_state ? "ON" : "OFF";
 
@@ -112,11 +119,11 @@ String mainPage()
       <h1>📊 ESP32 Dashboard</h1>
       <div class="sensor">
         🌡️ Nhiệt độ: <span id="temp">)rawliteral" +
-         String(temperature) + R"rawliteral(</span> &deg;C
+         String(temp) + R"rawliteral(</span> &deg;C
       </div>
       <div class="sensor">
         💧 Độ ẩm: <span id="hum">)rawliteral" +
-         String(humidity) + R"rawliteral(</span> %
+         String(hum) + R"rawliteral(</span> %
       </div>
 
       <div>

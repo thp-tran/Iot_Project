@@ -5,7 +5,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
-
+#define LED_GPIO 48
 extern float glob_temperature;
 extern float glob_humidity;
 
