@@ -1,30 +1,16 @@
 #include "led_blinky.h"
 
 void led_blinky(void *pvParameters){
-    pinMode(LED_GPIO, OUTPUT);
-  
-  while(1) {           
-    if (xSemaphoreTake(tempSemaphore, portMAX_DELAY) == pdTRUE) {
-        int blinkDelay;
+  SensorData recv0;
 
-        if (glob_temperature < 25) {
-            blinkDelay = 1000; // chớp chậm
-            Serial.println("LED: Cool (Slow blink)");
-        } else if (glob_temperature < 29) {
-            blinkDelay = 500;  // chớp vừa
-            Serial.println("LED: Warm (Medium blink)");
-        } else {
-            blinkDelay = 200;  // chớp nhanh
-            Serial.println("LED: Hot (Fast blink)");
-        }
-
-        // Nhấp nháy vài lần mỗi lần có dữ liệu mới
-        for (int i = 0; i < 3; i++) {
-            digitalWrite(LED_GPIO, HIGH);
-            vTaskDelay(blinkDelay / portTICK_PERIOD_MS);
-            digitalWrite(LED_GPIO, LOW);
-            vTaskDelay(blinkDelay / portTICK_PERIOD_MS);
+    while(1){
+        if(xSemaphoreTake(semSensorData, portMAX_DELAY) == pdTRUE){
+            if(xQueuePeek(qSensorData, &recv0, 0) == pdTRUE){
+                
+                if(recv0.humidity >= 60 && recv0.humidity <= 70) digitalWrite(LED_GPIO, LOW);
+                else if(recv0.humidity >= 70) digitalWrite(LED_GPIO, HIGH), vTaskDelay(500);
+                else digitalWrite(LED_GPIO, HIGH), vTaskDelay(100);
+            }
         }
     }
-  }
 }

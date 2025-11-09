@@ -1,26 +1,31 @@
 #include "neo_blinky.h"
-
+#include "global.h"
 
 void neo_blinky(void *pvParameters){
 
+    SensorData recv;
     Adafruit_NeoPixel strip(LED_COUNT, NEO_PIN, NEO_GRB + NEO_KHZ800);
     strip.begin();
-    // Set all pixels to off to start
     strip.clear();
     strip.show();
 
-    while(1) {                          
-        strip.setPixelColor(0, strip.Color(255, 0, 0)); // Set pixel 0 to red
-        strip.show(); // Update the strip
+    while(1){
+        // chờ có sensor update
+        if(xSemaphoreTake(semSensorData, portMAX_DELAY) == pdTRUE){
+            if(xQueuePeek(qSensorData, &recv, 0) == pdTRUE){
 
-        // Wait for 500 milliseconds
-        vTaskDelay(500);
+                if(recv.humidity < 50){
+                    strip.setPixelColor(0, strip.Color(0, 0, 255)); // Blue = Dry
+                }
+                else if(recv.humidity <= 75){
+                    strip.setPixelColor(0, strip.Color(0, 255, 0)); // Green = OK
+                }
+                else{
+                    strip.setPixelColor(0, strip.Color(255, 0, 0)); // Red = Wet
+                }
 
-        // Set the pixel to off
-        strip.setPixelColor(0, strip.Color(0, 0, 0)); // Turn pixel 0 off
-        strip.show(); // Update the strip
-
-        // Wait for another 500 milliseconds
-        vTaskDelay(500);
+                strip.show();
+            }
+        }
     }
 }

@@ -5,8 +5,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
-
-extern SemaphoreHandle_t tempSemaphore;
+#define LED_GPIO 48
 extern float glob_temperature;
 extern float glob_humidity;
 
@@ -23,4 +22,12 @@ extern String wifi_password ;
 
 extern boolean isWifiConnected;
 extern SemaphoreHandle_t xBinarySemaphoreInternet;
+
+typedef struct {
+    float temperature;
+    float humidity;
+} SensorData;
+
+extern QueueHandle_t qSensorData;
+extern SemaphoreHandle_t semSensorData;
 #endif
