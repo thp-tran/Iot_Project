@@ -32,6 +32,7 @@ void temp_humi_monitor(void *pvParameters){
         glob_humidity = humidity;
 
         // Print the results
+        xSemaphoreGive(tempSemaphore);
         
         Serial.print("Humidity: ");
         Serial.print(humidity);
@@ -39,7 +40,7 @@ void temp_humi_monitor(void *pvParameters){
         Serial.print(temperature);
         Serial.println("°C");
         
-        vTaskDelay(5000);
+        vTaskDelay(1000);
     }
     
 }

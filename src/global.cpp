@@ -1,4 +1,5 @@
 #include "global.h"
+SemaphoreHandle_t tempSemaphore;
 float glob_temperature = 0;
 float glob_humidity = 0;
 

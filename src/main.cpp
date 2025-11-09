@@ -17,6 +17,7 @@
 void setup()
 {
   Serial.begin(115200);
+  tempSemaphore = xSemaphoreCreateBinary();
   //check_info_File(0);
 
   xTaskCreate(led_blinky, "Task LED Blink", 2048, NULL, 2, NULL);
