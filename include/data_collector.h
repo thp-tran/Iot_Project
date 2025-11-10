@@ -1,6 +1,10 @@
 #ifndef DATA_COLLECTOR_H
 #define DATA_COLLECTOR_H
 
-void data_collector(void *pvParameters);
+#include "global.h"
+#include <FS.h>
+#include <LittleFS.h>
+
+void data_collector_task(void *pvParameters);
 
 #endif
