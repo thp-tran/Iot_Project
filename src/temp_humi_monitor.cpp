@@ -106,8 +106,8 @@ void temp_humi_monitor(void *pvParameters){
         // Notify other tasks that new data exists
         xSemaphoreGive(semSensorData);
 
-        Serial.print("Temp: "); Serial.print(data.temperature);
-        Serial.print("C  Humi: "); Serial.println(data.humidity);
+        // Serial.print("Temp: "); Serial.print(data.temperature);
+        // Serial.print("C  Humi: "); Serial.println(data.humidity);
 
         vTaskDelay(2000 / portTICK_PERIOD_MS);
     }
