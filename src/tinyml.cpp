@@ -51,25 +51,29 @@ void tiny_ml_task(void *pvParameters)
 
     while (1)
     {
+        SensorData recv0;
 
-        // Prepare input data (e.g., sensor readings)
-        // For a simple example, let's assume a single float input
-        input->data.f[0] = glob_temperature;
-        input->data.f[1] = glob_humidity;
-
-        // Run inference
-        TfLiteStatus invoke_status = interpreter->Invoke();
-        if (invoke_status != kTfLiteOk)
-        {
-            error_reporter->Report("Invoke failed");
-            return;
+        if(xSemaphoreTake(semSensorData, portMAX_DELAY) == pdTRUE){
+            if(xQueuePeek(qSensorData, &recv0, 0) == pdTRUE){
+                // Prepare input data (e.g., sensor readings)
+                // For a simple example, let's assume a single float input
+                input->data.f[0] = 26.0f; // Example temperature value
+                input->data.f[1] = 60.0f; // Example humidity value
+        
+                // Run inference
+                TfLiteStatus invoke_status = interpreter->Invoke();
+                if (invoke_status != kTfLiteOk)
+                {
+                    error_reporter->Report("Invoke failed");
+                    return;
+                }
+        
+                // Get and process output
+                float result = output->data.f[0];
+                Serial.println("Inference result: " + String(result * 100.0f) + "% - Temperature: " + String(recv0.temperature) + " C, Humidity: " + String(recv0.humidity) + " %");
+        
+                vTaskDelay(5000);
+            }
         }
-
-        // Get and process output
-        float result = output->data.f[0];
-        Serial.print("Inference result: ");
-        Serial.println(result);
-
-        vTaskDelay(5000);
     }
 }
