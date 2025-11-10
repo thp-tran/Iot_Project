@@ -1,9 +1,6 @@
-#include "global.h"
-#include <Arduino.h>
-#include <FS.h>
-#include <LittleFS.h>
+#include "data_collector.h"
 
-void data_collector(void *pvParameters)
+void data_collector_task(void *pvParameters)
 {
     SensorData recv0;
 
