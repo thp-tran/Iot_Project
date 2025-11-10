@@ -16,12 +16,11 @@ String mainPage()
   float hum;
   float temp;
   SensorData recv3;
-  if(xSemaphoreTake(semSensorData, portMAX_DELAY) == pdTRUE){
+  
     if(xQueuePeek(qSensorData, &recv3, 0) == pdTRUE){
         hum = recv3.humidity;
         temp = recv3.temperature;
       }
-  }
   String led1 = led1_state ? "ON" : "OFF";
   String led2 = led2_state ? "ON" : "OFF";
 
@@ -309,11 +308,26 @@ void handleToggle()
 
 void handleSensors()
 {
-  float t = glob_temperature;
-  float h = glob_humidity;
+  SensorData data;
+  float t = 0, h = 0;
+
+  // Lấy dữ liệu cảm biến mới nhất từ queue (nếu có)
+  if (xQueuePeek(qSensorData, &data, 0) == pdTRUE)
+  {
+    t = data.temperature;
+    h = data.humidity;
+  }
+  else
+  {
+    t = -1;
+    h = -1;
+  }
+
+  // Tạo JSON trả về
   String json = "{\"temp\":" + String(t) + ",\"hum\":" + String(h) + "}";
   server.send(200, "application/json", json);
 }
+
 
 void handleSettings() { server.send(200, "text/html", settingsPage()); }
 
