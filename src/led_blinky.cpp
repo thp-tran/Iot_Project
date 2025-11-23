@@ -4,18 +4,17 @@ void led_blinky(void *pvParameters)
 {
 
     SensorData recv0;
+    ToggleData toggleData;
 
     while (1)
     {
-
-        // Nếu nhận được tín hiệu tắt LED
-        uint32_t cmd = 0;
-        if (xTaskNotifyWait(0, 0, &cmd, 300) == pdPASS)
+        if (xQueuePeek(qToggleState, &toggleData, 0) == pdTRUE)
         {
-            if (cmd == 1)
+            if (!toggleData.toggleStateLed1)
             {
                 digitalWrite(LED_GPIO, LOW);
-                continue; // bỏ phần blink phía dưới
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+                continue; // Skip blinking if both LEDs are off
             }
         }
 
