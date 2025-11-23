@@ -27,8 +27,16 @@ typedef struct {
     float temperature;
     float humidity;
 } SensorData;
+
+typedef struct {
+    bool toggleStateLed1;
+    bool toggleStateLed2;
+} ToggleData;
+
 extern TaskHandle_t blinkTaskHandle;
 
 extern QueueHandle_t qSensorData;
 extern SemaphoreHandle_t semSensorData;
+
+extern QueueHandle_t qToggleState;
 #endif
