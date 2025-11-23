@@ -206,6 +206,6 @@ void coreiot_task(void *pvParameters){
         // client.publish("v1/devices/me/telemetry", payload.c_str());
 
         // Serial.println("Published payload: " + payload);
-        vTaskDelay(10000);  // Publish every 10 seconds
+        vTaskDelay(3000);  // Publish every 10 seconds
     }
 }
