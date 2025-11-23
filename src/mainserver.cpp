@@ -2,8 +2,6 @@
 #include <WebServer.h>
 #include <WiFi.h>
 
-bool led1_state = false;
-bool led2_state = false;
 bool isAPMode = true;
 
 WebServer server(80);
@@ -21,8 +19,6 @@ String mainPage() {
     temp = recv.temperature;
   }
 
-    String led1 = led1_state ? "ON" : "OFF";
-    String led2 = led2_state ? "ON" : "OFF";
 
     return R"rawliteral(
 <!DOCTYPE html>
@@ -162,12 +158,12 @@ String mainPage() {
 
     <div class="box">
       💡 LED1 <br>
-      <span id="l1" style="color:#facc15">OFF</span>
+      <span id="l1" style="color:#facc15">ON</span>
     </div>
 
     <div class="box">
       💡 LED2 <br>
-      <span id="l2" style="color:#facc15">OFF</span>
+      <span id="l2" style="color:#facc15">ON</span>
     </div>
   </div>
 
