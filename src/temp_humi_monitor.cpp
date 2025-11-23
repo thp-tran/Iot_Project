@@ -51,7 +51,7 @@ void temp_humi_monitor(void *pvParameters){
     while(1){
         if(xSemaphoreTake(semSensorData, portMAX_DELAY) == pdTRUE){
             if(xQueuePeek(qSensorData, &recv0, 0) == pdTRUE){
-
+                xSemaphoreGive(semSensorData);
                 // LCD display with 3 states
                 lcd.clear();
                 lcd.setCursor(0,0);
@@ -92,6 +92,7 @@ void temp_humi_monitor(void *pvParameters){
                 }
             }
         }
-
+        
+        vTaskDelay(1000);
     }
 }
