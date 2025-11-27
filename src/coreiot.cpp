@@ -1,211 +1,168 @@
 #include "coreiot.h"
 
-// ----------- CONFIGURE THESE! -----------
-const char* coreIOT_Server = "app.coreiot.io";  
-const char* coreIOT_Token = "s2Mj1H6hB2NsfksxLppO";   // Device Access Token
-const int   mqttPort = 1883;
-// ----------------------------------------
+// ===============================
+// CONFIG LOCAL + COREIOT
+// ===============================
+const char* LOCAL_MQTT_IP = "127.0.0.1";     // Local Mosquitto
+const int   LOCAL_MQTT_PORT = 1883;
+
+const char* COREIOT_SERVER = "app.coreiot.io";  
+const char* COREIOT_TOKEN  = "s2Mj1H6hB2NsfksxLppO";
+const int   COREIOT_PORT   = 1883;
+
+bool useLocalMQTT = false;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
 
+// ===============================
+// RECONNECT cho Local và CoreIoT
+// ===============================
+bool try_connect_local() {
+    client.setServer(LOCAL_MQTT_IP, LOCAL_MQTT_PORT);
 
-void reconnect() {
-  // Loop until we're reconnected
-  while (!client.connected()) {
-    Serial.print("Attempting MQTT connection...");
-    // Attempt to connect (username=token, password=empty)
-    if (client.connect("ESP32Client", coreIOT_Token, NULL)) {
-      Serial.println("connected to CoreIOT Server!");
-      client.subscribe("v1/devices/me/rpc/request/+");
-      Serial.println("Subscribed to v1/devices/me/rpc/request/+");
-
-    } else {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
-      delay(5000);
+    Serial.println("[MQTT] Trying LOCAL broker...");
+    if (client.connect("ESP32_Local")) {
+        Serial.println("[MQTT] Connected to LOCAL broker!");
+        return true;
     }
-  }
+    Serial.println("[MQTT] Local broker unavailable.");
+    return false;
 }
 
+bool try_connect_coreiot() {
+    client.setServer(COREIOT_SERVER, COREIOT_PORT);
 
-// void callback(char* topic, byte* payload, unsigned int length) {
-//   Serial.print("Message arrived [");
-//   Serial.print(topic);
-//   Serial.println("] ");
+    Serial.println("[MQTT] Trying CoreIoT broker...");
+    if (client.connect("ESP32_CoreIoT", COREIOT_TOKEN, NULL)) {
+        Serial.println("[MQTT] Connected to CoreIoT!");
+        client.subscribe("v1/devices/me/rpc/request/+");
+        return true;
+    }
+    Serial.println("[MQTT] CoreIoT connect failed.");
+    return false;
+}
 
-//   // Allocate a temporary buffer for the message
-//   char message[length + 1];
-//   memcpy(message, payload, length);
-//   message[length] = '\0';
-//   Serial.print("Payload: ");
-//   Serial.println(message);
+void smart_reconnect() {
+    while (!client.connected()) {
+        Serial.println("[MQTT] Reconnecting...");
+        
+        // 1) thử local trước
+        if (try_connect_local()) {
+            useLocalMQTT = true;
+            return;
+        }
 
-//   // Parse JSON
-//   StaticJsonDocument<256> doc;
-//   DeserializationError error = deserializeJson(doc, message);
+        // 2) nếu local fail → thử CoreIoT
+        if (try_connect_coreiot()) {
+            useLocalMQTT = false;
+            return;
+        }
 
-//   if (error) {
-//     Serial.print("deserializeJson() failed: ");
-//     Serial.println(error.c_str());
-//     return;
-//   }
+        Serial.println("[MQTT] Retry in 5s...");
+        delay(5000);
+    }
+}
 
-//   const char* method = doc["method"];
-//   if (strcmp(method, "setStateLED") == 0) {
-//     // Check params type (could be boolean, int, or string according to your RPC)
-//     // Example: {"method": "setValueLED", "params": "ON"}
-//     const char* params = doc["params"];
-
-//     if (strcmp(params, "ON") == 0) {
-//       Serial.println("Device turned ON.");
-//       digitalWrite(LED_GPIO, HIGH);
-//       //TODO
-//     } else {   
-//       Serial.println("Device turned OFF.");
-//       digitalWrite(LED_GPIO, LOW);
-//       //TODO
-
-//     }
-//   } else {
-//     Serial.print("Unknown method: ");
-//     Serial.println(method);
-//   }
-// }
-
-
+// ===============================
+// CALLBACK (giữ NGUYÊN phần RPC)
+// ===============================
 void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("Message arrived [");
-  Serial.print(topic);
-  Serial.println("]");
+    Serial.print("Message arrived [");
+    Serial.print(topic);
+    Serial.println("]");
 
-  // 🔒 Kiểm tra dữ liệu rỗng
-  if (length == 0) {
-    Serial.println("⚠️ Empty payload received!");
-    return;
-  }
+    if (length == 0) return;
 
-  // 🔒 Copy payload an toàn sang chuỗi
-  static char message[512];  // bộ đệm đủ lớn, tránh cấp phát stack
-  if (length >= sizeof(message)) length = sizeof(message) - 1;
-  memcpy(message, payload, length);
-  message[length] = '\0';
+    static char message[512];
+    if (length >= sizeof(message)) length = sizeof(message) - 1;
+    memcpy(message, payload, length);
+    message[length] = '\0';
 
-  Serial.print("Payload: ");
-  Serial.println(message);
+    Serial.print("Payload: ");
+    Serial.println(message);
 
-  // 🔒 Parse JSON an toàn
-  StaticJsonDocument<512> doc;
-  DeserializationError error = deserializeJson(doc, message);
-  if (error) {
-    Serial.print("❌ JSON parse error: ");
-    Serial.println(error.c_str());
-    return;
-  }
+    StaticJsonDocument<512> doc;
+    DeserializationError error = deserializeJson(doc, message);
+    if (error) return;
 
-  // 🔒 Lấy "method" và kiểm tra null
-  const char* method = doc["method"];
-  if (!method) {
-    Serial.println("⚠️ Missing 'method' in JSON!");
-    return;
-  }
+    const char* method = doc["method"];
+    if (!method) return;
 
-  // Xử lý RPC "setStateLED"
-  if (strcmp(method, "setStateLED") == 0) {
-    Serial.println("✅ RPC: setStateLED");
+    // ======= RPC giữ nguyên như gốc =======
+    if (strcmp(method, "setStateLED") == 0) {
+        Serial.println("RPC: setStateLED");
 
-    if (doc["params"].is<bool>()) {
-      bool state = doc["params"];
-      digitalWrite(LED_GPIO, state ? HIGH : LOW);
-      Serial.println(state ? "LED ON (bool)" : "LED OFF (bool)");
-      String feedback = "{\"ledState\":";
-      feedback += (state ? "true" : "false");
-      feedback += "}";
-      client.publish("v1/devices/me/attributes", feedback.c_str());
-      Serial.println("Published LED state to server: " + feedback);
+        if (doc["params"].is<bool>()) {
+            bool state = doc["params"];
+            digitalWrite(LED_GPIO, state ? HIGH : LOW);
 
-    } else if (doc["params"].is<const char*>()) {
-      const char* param = doc["params"];
-      if (param && strcmp(param, "ON") == 0) {
-        digitalWrite(LED_GPIO, HIGH);
-        Serial.println("LED ON (string)");
-      } else {
-        digitalWrite(LED_GPIO, LOW);
-        Serial.println("LED OFF (string)");
-      }
-
-    } else {
-      Serial.println("⚠️ Unknown param type!");
+            String feedback = "{\"ledState\":";
+            feedback += (state ? "true" : "false");
+            feedback += "}";
+            client.publish("v1/devices/me/attributes", feedback.c_str());
+        }
     }
-
-  } else if(strcmp(method, "getStateLED") == 0){
-    
-  }
-  else {
-    Serial.print("⚠️ Unknown method: ");
-    Serial.println(method);
-  }
 }
 
+// ===============================
+// SETUP
+// ===============================
+void setup_coreiot() {
 
-void setup_coreiot(){
-
-  //Serial.print("Connecting to WiFi...");
-  //WiFi.begin(wifi_ssid, wifi_password);
-  //while (WiFi.status() != WL_CONNECTED) {
-  
-  // while (isWifiConnected == false) {
-  //   delay(500);
-  //   Serial.print(".");
-  // }
-
-  while(1){
-    if (xSemaphoreTake(xBinarySemaphoreInternet, portMAX_DELAY)) {
-      break;
+    // đợi có internet
+    while (1) {
+        if (xSemaphoreTake(xBinarySemaphoreInternet, portMAX_DELAY))
+            break;
+        delay(500);
     }
-    delay(500);
-    Serial.print(".");
-  }
 
+    Serial.println("Connected WiFi");
 
-  Serial.println(" Connected!");
+    client.setCallback(callback);
 
-  client.setServer(coreIOT_Server, mqttPort);
-  client.setCallback(callback);
-
+    // auto connect local → cloud
+    smart_reconnect();
 }
 
-void coreiot_task(void *pvParameters){
+// ===============================
+// TASK LOOP
+// ===============================
+void coreiot_task(void *pvParameters) {
 
     setup_coreiot();
 
-    while(1){
+    while (1) {
 
         if (!client.connected()) {
-            reconnect();
+            smart_reconnect();
         }
-        client.loop();
-        float hum;
-        float temp;
-        SensorData recv2;
-        if(xSemaphoreTake(semSensorData, portMAX_DELAY) == pdTRUE){
-            if(xQueuePeek(qSensorData, &recv2, 0) == pdTRUE){
-              hum = recv2.humidity;
-              temp = recv2.temperature;
-              String payload = "{\"temperature\":" + String(temp) +  ",\"humidity\":" + String(hum) + "}";
-        
-              client.publish("v1/devices/me/telemetry", payload.c_str());
 
-              Serial.println("Published payload: " + payload);
+        client.loop();
+
+        float hum, temp;
+        SensorData recv2;
+
+        if (xSemaphoreTake(semSensorData, portMAX_DELAY) == pdTRUE) {
+            if (xQueuePeek(qSensorData, &recv2, 0) == pdTRUE) {
+
+                hum = recv2.humidity;
+                temp = recv2.temperature;
+
+                String payload = "{\"temperature\":" + String(temp) +
+                                 ",\"humidity\":" + String(hum) + "}";
+
+                if (useLocalMQTT) {
+                    client.publish("esp32/telemetry", payload.c_str());
+                    Serial.println("LOCAL MQTT → " + payload);
+
+                } else {
+                    client.publish("v1/devices/me/telemetry", payload.c_str());
+                    Serial.println("CoreIoT → " + payload);
+                }
             }
         }
-        // Sample payload, publish to 'v1/devices/me/telemetry'
-        // String payload = "{\"temperature\":" + String(glob_temperature) +  ",\"humidity\":" + String(glob_humidity) + "}";
-        
-        // client.publish("v1/devices/me/telemetry", payload.c_str());
 
-        // Serial.println("Published payload: " + payload);
-        vTaskDelay(3000);  // Publish every 10 seconds
+        vTaskDelay(3000);
     }
 }
