@@ -12,8 +12,8 @@ void dht20_sensor_task(void *pvParameters) {
         //dht20.read();
         //data.temperature = dht20.getTemperature();
         //data.humidity = dht20.getHumidity();
-        data.temperature = 25.0 + (rand() % 1000) / 100.0; // Simulated temperature
-        data.humidity = 50.0 + (rand() % 1000) / 100.0;    // Simulated humidity
+        data.temperature = 25.0 ; // Simulated temperature
+        data.humidity = 50.0;    // Simulated humidity
 
         if (isnan(data.temperature) || isnan(data.humidity)) {
             // Handle read failure
@@ -23,8 +23,8 @@ void dht20_sensor_task(void *pvParameters) {
 
         Serial.printf("Temperature: %.2f °C, Humidity: %.2f %%\n", data.temperature, data.humidity);
 
-        xQueueOverwrite(qSensorData, &data);
-        xSemaphoreGive(semSensorData);
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
+        // xQueueOverwrite(qSensorData, &data);
+        // xSemaphoreGive(semSensorData);
+        vTaskDelay(4000 / portTICK_PERIOD_MS);
     }
 }

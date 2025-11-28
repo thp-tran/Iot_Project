@@ -21,10 +21,9 @@ void led_blinky(void *pvParameters)
         // Blink theo độ ẩm
         if (xSemaphoreTake(semSensorData, portMAX_DELAY) == pdTRUE)
         {
-            xSemaphoreGive(semSensorData);
             if (xQueuePeek(qSensorData, &recv0, 0) == pdTRUE)
             {
-
+                xSemaphoreGive(semSensorData);
                 // Humidity 60 - 70 → LED OFF
                 if (recv0.humidity >= 60 && recv0.humidity <= 70)
                 {
