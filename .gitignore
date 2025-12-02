@@ -1,2 +1,7 @@
 .pio
 .vscode
+.conda
+iot_env
+build/
+node_modules/
+.env
