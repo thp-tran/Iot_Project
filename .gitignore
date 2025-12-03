@@ -1,5 +1,6 @@
 .pio
 .vscode
+/localMqtt/.venv
 .conda
 iot_env
 build/
