@@ -1,6 +1,6 @@
 #include "mainserver.h"
-#include <WiFi.h>
 #include <WebServer.h>
+#include <WiFi.h>
 
 bool led1_state = false;
 bool led2_state = false;
@@ -11,158 +11,329 @@ WebServer server(80);
 unsigned long connect_start_ms = 0;
 bool connecting = false;
 
-String mainPage()
-{
-  float hum;
-  float temp;
-  SensorData recv3;
-  if(xSemaphoreTake(semSensorData, portMAX_DELAY) == pdTRUE){
-    if(xQueuePeek(qSensorData, &recv3, 0) == pdTRUE){
-        hum = recv3.humidity;
-        temp = recv3.temperature;
-      }
-  }
-  String led1 = led1_state ? "ON" : "OFF";
-  String led2 = led2_state ? "ON" : "OFF";
+String mainPage() {
+    float hum = -1, temp = -1;
+    SensorData recv;
 
-  return R"rawliteral(
-  <!DOCTYPE html>
-  <html lang="vi">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32 Dashboard</title>
-    <style>
-      body {
-        font-family: "Segoe UI", Arial, sans-serif;
-        background: #f2f3f5;
-        color: #333;
-        text-align: center;
-        margin: 0;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-      }
+    if (xQueuePeek(qSensorData, &recv, 0) == pdTRUE) {
+        hum = recv.humidity;
+        temp = recv.temperature;
+    }
 
-      .logo {
-        width: 220px;
-        height: 90px;
-        border-radius: 20px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        margin-bottom: 25px;
-        background: #f2f3f5;
-        object-fit: contain;
-        padding: 10px 15px;
-      }
+    String led1 = led1_state ? "ON" : "OFF";
+    String led2 = led2_state ? "ON" : "OFF";
 
-      .container {
-        background: linear-gradient(135deg, #1e90ff, #00bfff);
-        padding: 35px 45px;
-        border-radius: 20px;
-        box-shadow: 0 4px 25px rgba(0,0,0,0.15);
-        width: 90%;
-        max-width: 400px;
-        color: #fff;
-        backdrop-filter: blur(6px);
-      }
+    return R"rawliteral(
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 Dashboard</title>
 
-      h1 {
-        font-size: 1.8em;
-        margin-bottom: 20px;
-      }
 
-      .sensor {
-        font-size: 1.1em;
-        margin: 10px 0;
-      }
+  <style>
+    body {
+      margin: 0;
+      background: #111827;
+      color: #e5e7eb;
+      font-family: "Segoe UI", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
 
-      .sensor span {
-        font-weight: bold;
-        color: #00ffcc;
-      }
+    h1 {
+      color: #38bdf8;
+      margin-bottom: 20px;
+      text-align: center;
+    }
 
-      button {
-        margin: 10px;
-        background: #00ffcc;
-        color: #000;
-        font-weight: bold;
-        border: none;
-        border-radius: 20px;
-        padding: 10px 20px;
-        cursor: pointer;
-        transition: all 0.3s;
-        font-size: 1em;
-      }
+    .value-box {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 25px;
+      margin-bottom: 30px;
+      justify-content: center;
+    }
 
-      button:hover {
-        background: #00e0b0;
-        transform: scale(1.05);
-      }
+    .box {
+      background: #1f2937;
+      padding: 20px 30px;
+      border-radius: 15px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      min-width: 150px;
+    }
 
-      #settings {
-        background: #f2f3f5;
-        color: #007bff;
-        font-weight: bold;
-      }
+    .box span {
+      font-size: 2rem;
+      color: #10b981;
+      font-weight: bold;
+    }
 
-      #settings:hover {
-        background: #e6f3ff;
-      }
-    </style>
-  </head>
+    /* LED buttons */
+    .led-box {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
 
-  <body>
-    <img src="data:image/png;base64,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" alt="Project Icon" class="logo">
-    <div class="container">
-      <h1>📊 ESP32 Dashboard</h1>
-      <div class="sensor">
-        🌡️ Nhiệt độ: <span id="temp">)rawliteral" +
-         String(temp) + R"rawliteral(</span> &deg;C
-      </div>
-      <div class="sensor">
-        💧 Độ ẩm: <span id="hum">)rawliteral" +
-         String(hum) + R"rawliteral(</span> %
-      </div>
+    .led-btn {
+      background: #38bdf8;
+      border: none;
+      padding: 12px 22px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: bold;
+      color: #000;
+      transition: 0.25s;
+    }
 
-      <div>
-        <button onclick='toggleLED(1)'>💡 LED1: <span id="l1">)rawliteral" +
-         led1 + R"rawliteral(</span></button>
-        <button onclick='toggleLED(2)'>💡 LED2: <span id="l2">)rawliteral" +
-         led2 + R"rawliteral(</span></button>
-      </div>
+    .led-btn:hover {
+      transform: scale(1.07);
+      background: #0ea5e9;
+    }
 
-      <button id="settings" onclick="window.location='/settings'">⚙️ Cài đặt</button>
+    /* SETTINGS BUTTON */
+    .settings-btn {
+      background: #facc15;
+      color: #000;
+      font-weight: bold;
+      padding: 12px 30px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      transition: 0.25s;
+      margin-bottom: 30px;
+    }
+
+    .settings-btn:hover {
+      transform: scale(1.07);
+      background: #eab308;
+    }
+
+    /* 2 chart bên cạnh nhau */
+    .charts-row {
+      display: flex;
+      gap: 20px;
+      width: 100%;
+      max-width: 1200px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .chart-container {
+      background: #1f2937;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.4);
+      flex: 1 1 45%;
+      min-width: 320px;
+    }
+
+    canvas {
+      width: 100% !important;
+      height: 330px !important;
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <h1>📊 ESP32 Sensor Dashboard</h1>
+
+  <!-- VALUE BOX -->
+  <div class="value-box">
+    <div class="box">
+      🌡️ Nhiệt độ <br>
+      <span id="temp">25.0</span> °C
     </div>
 
-    <script>
-      function toggleLED(id) {
-        fetch('/toggle?led='+id)
-          .then(response=>response.json())
-          .then(json=>{
-            document.getElementById('l1').innerText=json.led1;
-            document.getElementById('l2').innerText=json.led2;
-          });
-      }
+    <div class="box">
+      💧 Độ ẩm <br>
+      <span id="hum">60</span> %
+    </div>
 
-      setInterval(()=>{
-        fetch('/sensors')
-          .then(res=>res.json())
-          .then(d=>{
-            document.getElementById('temp').innerText=d.temp;
-            document.getElementById('hum').innerText=d.hum;
-          });
-      },3000);
-    </script>
-  </body>
-  </html>
-  )rawliteral";
+    <div class="box">
+      💡 LED1 <br>
+      <span id="l1" style="color:#facc15">OFF</span>
+    </div>
+
+    <div class="box">
+      💡 LED2 <br>
+      <span id="l2" style="color:#facc15">OFF</span>
+    </div>
+  </div>
+
+  <!-- LED BUTTONS -->
+  <div class="led-box">
+    <button class="led-btn" onclick="toggleLED(1)">🔘 Toggle LED1</button>
+    <button class="led-btn" onclick="toggleLED(2)">🔘 Toggle LED2</button>
+  </div>
+
+  <!-- SETTINGS BUTTON -->
+  <button class="settings-btn" onclick="window.location='/settings'">⚙️ Cài đặt</button>
+
+<!-- 2 CHARTS CẠNH NHAU -->
+<div class="charts-row">
+
+  <div class="chart-container">
+    <h2 style="color:#f87171; margin-bottom:10px;">🌡️ Biểu đồ Nhiệt độ</h2>
+    <svg id="tempSVG" width="100%" height="300"></svg>
+  </div>
+
+  <div class="chart-container">
+    <h2 style="color:#60a5fa; margin-bottom:10px;">💧 Biểu đồ Độ ẩm</h2>
+    <svg id="humSVG" width="100%" height="300"></svg>
+  </div>
+
+</div>
+
+
+
+<script>
+
+   function toggleLED(id) {
+    fetch('/toggle?led=' + id)
+      .then(res => res.json())
+      .then(json => {
+        
+        // Cập nhật trạng thái LED1
+        document.getElementById('l1').innerText = json.led1;
+        document.getElementById('l1').style.color =
+          (json.led1 === "ON") ? "#10b981" : "#facc15";
+
+        // Cập nhật trạng thái LED2
+        document.getElementById('l2').innerText = json.led2;
+        document.getElementById('l2').style.color =
+          (json.led2 === "ON") ? "#10b981" : "#facc15";
+      })
+      .catch(err => console.error("Toggle LED error:", err));
+  }
+const MAX_POINTS = 20;
+
+let tempData = [];
+let humData  = [];
+
+/* ===========================================
+   HÀM VẼ GRID + LABEL SỐ TRỤC Y
+=========================================== */
+function drawGrid(svg, minVal, maxVal) {
+  const W = svg.clientWidth;
+  const H = svg.clientHeight;
+  svg.innerHTML = "";
+
+  for (let i = 0; i <= 5; i++) {
+    const y = (H / 5) * i;
+
+    // Grid line
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", 0);
+    line.setAttribute("y1", y);
+    line.setAttribute("x2", W);
+    line.setAttribute("y2", y);
+    line.setAttribute("stroke", "#374151");
+    svg.appendChild(line);
+
+    // Y-axis label
+    const val = maxVal - (i * (maxVal - minVal) / 5);
+    const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    txt.setAttribute("x", 5);
+    txt.setAttribute("y", y - 2);
+    txt.setAttribute("fill", "#9ca3af");
+    txt.setAttribute("font-size", "12");
+    txt.textContent = val.toFixed(0);
+    svg.appendChild(txt);
+  }
 }
 
-String settingsPage()
-{
-  return R"rawliteral(
+/* ===========================================
+   HÀM TÍNH PATH SMOOTH CURVE (Cubic Bézier)
+=========================================== */
+function smoothPath(points) {
+  if (points.length < 2) return "";
+
+  let path = `M ${points[0].x} ${points[0].y}`;
+
+  for (let i = 1; i < points.length; i++) {
+    const p0 = points[i - 1];
+    const p1 = points[i];
+    const cpx = (p0.x + p1.x) / 2;
+    path += ` C ${cpx} ${p0.y}, ${cpx} ${p1.y}, ${p1.x} ${p1.y}`;
+  }
+
+  return path;
+}
+
+/* ===========================================
+   HÀM VẼ CHART SVG
+=========================================== */
+function drawChart(svg, data, color, minVal, maxVal) {
+  drawGrid(svg, minVal, maxVal);
+
+  const W = svg.clientWidth;
+  const H = svg.clientHeight;
+
+  let pts = [];
+
+  for (let i = 0; i < data.length; i++) {
+    const x = (i / (MAX_POINTS - 1)) * (W - 20) + 10;
+    const val = data[i];
+
+    const y = H - ((val - minVal) / (maxVal - minVal)) * (H - 20) - 10;
+
+    pts.push({ x, y });
+  }
+
+  if (pts.length < 2) return;
+
+  // Create smooth curve
+  const d = smoothPath(pts);
+
+  const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  p.setAttribute("d", d);
+  p.setAttribute("fill", "none");
+  p.setAttribute("stroke", color);
+  p.setAttribute("stroke-width", "3");
+  p.setAttribute("stroke-linecap", "round");
+
+  svg.appendChild(p);
+}
+
+/* ===========================================
+   UPDATE DỮ LIỆU TỪ ESP32
+=========================================== */
+setInterval(() => {
+  fetch("/sensors")
+    .then(res => res.json())
+    .then(s => {
+      document.getElementById("temp").innerText = s.temp;
+      document.getElementById("hum").innerText  = s.hum;
+
+      tempData.push(parseFloat(s.temp));
+      humData.push(parseFloat(s.hum));
+
+      if (tempData.length > MAX_POINTS) tempData.shift();
+      if (humData.length > MAX_POINTS) humData.shift();
+
+      drawChart(document.getElementById("tempSVG"), tempData, "#f87171", 10, 50);
+      drawChart(document.getElementById("humSVG"),  humData, "#60a5fa", 20, 90);
+    });
+}, 2000);
+</script>
+
+</body>
+</html>
+)rawliteral";
+}
+
+String settingsPage() {
+    return R"rawliteral(
   <!DOCTYPE html>
   <html lang="vi">
   <head>
@@ -289,134 +460,126 @@ String settingsPage()
 // ========== Handlers ==========
 void handleRoot() { server.send(200, "text/html", mainPage()); }
 
-void handleToggle()
-{
-  int led = server.arg("led").toInt();
-  if (led == 1)
-  {
-    led1_state = !led1_state;
-    Serial.println("YOUR CODE TO CONTROL LED1");
-  }
-  else if (led == 2)
-  {
-    led2_state = !led2_state;
-    Serial.println("YOUR CODE TO CONTROL LED2");
-  }
-  server.send(200, "application/json",
-              "{\"led1\":\"" + String(led1_state ? "ON" : "OFF") +
-                  "\",\"led2\":\"" + String(led2_state ? "ON" : "OFF") + "\"}");
+void handleToggle() {
+    int led = server.arg("led").toInt();
+    ToggleData data;
+    xQueuePeek(qToggleState, &data, 0);
+
+    if (led == 1) {
+        data.toggleStateLed1 = !data.toggleStateLed1;
+    } else if (led == 2) {
+        data.toggleStateLed2 = !data.toggleStateLed2;
+    }
+    xQueueOverwrite(qToggleState, &data);
+
+    server.send(200, "application/json",
+                "{\"led1\":\"" + String(data.toggleStateLed1 ? "ON" : "OFF") +
+                    "\",\"led2\":\"" + String(data.toggleStateLed2 ? "ON" : "OFF") + "\"}");
 }
 
-void handleSensors()
-{
-  float t = glob_temperature;
-  float h = glob_humidity;
-  String json = "{\"temp\":" + String(t) + ",\"hum\":" + String(h) + "}";
-  server.send(200, "application/json", json);
+void handleSensors() {
+    SensorData data;
+    float t = 0, h = 0;
+
+    // Lấy dữ liệu cảm biến mới nhất từ queue (nếu có)
+    if (xSemaphoreTake(semSensorData, portMAX_DELAY) == pdTRUE) {
+        if (xQueuePeek(qSensorData, &data, 0) == pdTRUE) {
+            xSemaphoreGive(semSensorData);
+            t = data.temperature;
+            h = data.humidity;
+        }
+    }
+    // Tạo JSON trả về
+    String json = "{\"temp\":" + String(t) + ",\"hum\":" + String(h) + "}";
+    server.send(200, "application/json", json);
 }
 
 void handleSettings() { server.send(200, "text/html", settingsPage()); }
 
-void handleConnect()
-{
-  wifi_ssid = server.arg("ssid");
-  wifi_password = server.arg("pass");
-  server.send(200, "text/plain", "Connecting....");
-  isAPMode = false;
-  connecting = true;
-  connect_start_ms = millis();
-  connectToWiFi();
+void handleConnect() {
+    wifi_ssid = server.arg("ssid");
+    wifi_password = server.arg("pass");
+    server.send(200, "text/plain", "Connecting....");
+    isAPMode = false;
+    connecting = true;
+    connect_start_ms = millis();
+    connectToWiFi();
 }
 
 // ========== WiFi ==========
-void setupServer()
-{
-  server.on("/", HTTP_GET, handleRoot);
-  server.on("/toggle", HTTP_GET, handleToggle);
-  server.on("/sensors", HTTP_GET, handleSensors);
-  server.on("/settings", HTTP_GET, handleSettings);
-  server.on("/connect", HTTP_GET, handleConnect);
-  server.begin();
+void setupServer() {
+    server.on("/", HTTP_GET, handleRoot);
+    server.on("/toggle", HTTP_GET, handleToggle);
+    server.on("/sensors", HTTP_GET, handleSensors);
+    server.on("/settings", HTTP_GET, handleSettings);
+    server.on("/connect", HTTP_GET, handleConnect);
+    server.begin();
 }
 
-void startAP()
-{
-  WiFi.mode(WIFI_AP);
-  WiFi.softAP(ssid.c_str(), password.c_str());
-  Serial.print("AP IP address: ");
-  Serial.println(WiFi.softAPIP());
-  isAPMode = true;
-  connecting = false;
+void startAP() {
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP(ssid.c_str(), password.c_str());
+    Serial.print("AP IP address: ");
+    Serial.println(WiFi.softAPIP());
+    isAPMode = true;
+    connecting = false;
 }
 
-void connectToWiFi()
-{
-  WiFi.mode(WIFI_STA);
-  if (wifi_password.isEmpty())
-  {
-    WiFi.begin(wifi_ssid.c_str());
-  }
-  else
-  {
-    WiFi.begin(wifi_ssid.c_str(), wifi_password.c_str());
-  }
-  Serial.print("Connecting to: ");
-  Serial.print(wifi_ssid.c_str());
+void connectToWiFi() {
+    WiFi.mode(WIFI_STA);
+    if (wifi_password.isEmpty()) {
+        WiFi.begin(wifi_ssid.c_str());
+    } else {
+        WiFi.begin(wifi_ssid.c_str(), wifi_password.c_str());
+    }
+    Serial.print("Connecting to: ");
+    Serial.print(wifi_ssid.c_str());
 
-  Serial.print(" Password: ");
-  Serial.print(wifi_password.c_str());
+    Serial.print(" Password: ");
+    Serial.print(wifi_password.c_str());
 }
 
 // ========== Main task ==========
-void main_server_task(void *pvParameters)
-{
-  pinMode(BOOT_PIN, INPUT_PULLUP);
+void main_server_task(void *pvParameters) {
+    pinMode(BOOT_PIN, INPUT_PULLUP);
 
-  startAP();
-  setupServer();
+    startAP();
+    setupServer();
 
-  while (1)
-  {
-    server.handleClient();
+    while (1) {
+        server.handleClient();
 
-    // BOOT Button to switch to AP Mode
-    if (digitalRead(BOOT_PIN) == LOW)
-    {
-      vTaskDelay(100);
-      if (digitalRead(BOOT_PIN) == LOW)
-      {
-        if (!isAPMode)
-        {
-          startAP();
-          setupServer();
+        // BOOT Button to switch to AP Mode
+        if (digitalRead(BOOT_PIN) == LOW) {
+            vTaskDelay(100);
+            if (digitalRead(BOOT_PIN) == LOW) {
+                if (!isAPMode) {
+                    startAP();
+                    setupServer();
+                }
+            }
         }
-      }
+
+        // STA Mode
+        if (connecting) {
+            if (WiFi.status() == WL_CONNECTED) {
+                Serial.print("STA IP address: ");
+                Serial.println(WiFi.localIP());
+                isWifiConnected = true; // Internet access
+
+                xSemaphoreGive(xBinarySemaphoreInternet);
+
+                isAPMode = false;
+                connecting = false;
+            } else if (millis() - connect_start_ms > 10000) { // timeout 10s
+                Serial.println("WiFi connect failed! Back to AP.");
+                startAP();
+                setupServer();
+                connecting = false;
+                isWifiConnected = false;
+            }
+        }
+
+        vTaskDelay(20); // avoid watchdog reset
     }
-
-    // STA Mode
-    if (connecting)
-    {
-      if (WiFi.status() == WL_CONNECTED)
-      {
-        Serial.print("STA IP address: ");
-        Serial.println(WiFi.localIP());
-        isWifiConnected = true; // Internet access
-
-        xSemaphoreGive(xBinarySemaphoreInternet);
-
-        isAPMode = false;
-        connecting = false;
-      }
-      else if (millis() - connect_start_ms > 10000)
-      { // timeout 10s
-        Serial.println("WiFi connect failed! Back to AP.");
-        startAP();
-        setupServer();
-        connecting = false;
-        isWifiConnected = false;
-      }
-    }
-
-    vTaskDelay(20); // avoid watchdog reset
-  }
 }

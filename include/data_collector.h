@@ -6,6 +6,5 @@
 #include <LittleFS.h>
 
 void data_collector_task(void *pvParameters);
-void data_collector(void *pvParameters);
 
 #endif
