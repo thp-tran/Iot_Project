@@ -1,0 +1,24 @@
+{
+  "name": "mqtt",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "broker": "nodemon broker/broker.js",
+    "dev": "nodemon src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "aedes": "^0.51.3",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "mqtt": "^5.14.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}

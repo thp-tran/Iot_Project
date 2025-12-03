@@ -5,3 +5,6 @@ node_modules
 __pycache__
 .env
 .DS_Store
+.conda
+iot_env
+build
