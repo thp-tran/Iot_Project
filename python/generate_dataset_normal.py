@@ -10,24 +10,24 @@ TEMP_NORMAL_MIN, TEMP_NORMAL_MAX = 25.0, 35.0     # °C
 HUMI_NORMAL_MIN, HUMI_NORMAL_MAX = 40.0, 80.0     # %
 
 # === Số lượng tổng mẫu muốn tạo ===
-NUM_SAMPLES = 200
-NUM_EACH = NUM_SAMPLES // 2   # 50% normal, 50% abnormal
+NUM_SAMPLES = 2000
+NUM_EACH = int(NUM_SAMPLES * 0.4)   # 40% normal, 60% abnormal
 
 # === File dataset ===
-CSV_FILE = "src/dataset.csv"
+CSV_FILE = "../src/dataset.csv"
 
-with open(CSV_FILE, mode="a", newline="") as f:
+with open(CSV_FILE, mode="w", newline="") as f:
     writer = csv.writer(f)
 
     # --- Sinh dữ liệu bình thường (label=0) ---
-    for _ in range(NUM_EACH):
+    for _ in range(NUM_SAMPLES):
         temp = round(random.uniform(TEMP_NORMAL_MIN, TEMP_NORMAL_MAX), 2)
         humi = round(random.uniform(HUMI_NORMAL_MIN, HUMI_NORMAL_MAX), 2)
         label = 0
         writer.writerow([temp, humi, label])
 
     # --- Sinh dữ liệu bất thường (label=1) ---
-    for _ in range(NUM_EACH):
+    for _ in range(NUM_SAMPLES - NUM_EACH):
         while True:
             temp = round(random.uniform(TEMP_GENERAL_MIN, TEMP_GENERAL_MAX), 2)
             humi = round(random.uniform(HUMI_GENERAL_MIN, HUMI_GENERAL_MAX), 2)
@@ -37,4 +37,4 @@ with open(CSV_FILE, mode="a", newline="") as f:
         label = 1
         writer.writerow([temp, humi, label])
 
-print(f"✅ Generated {NUM_SAMPLES} samples (balanced 1:1) and appended to {CSV_FILE}")
+print(f"✅ Generated {NUM_SAMPLES} samples and appended to {CSV_FILE}")
