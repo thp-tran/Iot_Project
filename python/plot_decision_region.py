@@ -34,19 +34,18 @@ def plot_decision_region():
     out_dir = "images"
     os.makedirs(out_dir, exist_ok=True)
 
-    # Plot decision region
     plt.figure(figsize=(10, 8))
     plt.contourf(xx, yy, preds, levels=[0, 0.5, 1], alpha=0.4, colors=["green", "red"])
     plt.colorbar(label="Model Output (0=Normal, 1=Anomaly)")
 
-    # Optional: Plot dataset on top
     labels = data[:, 2]
     plt.scatter(temps[labels == 0], hums[labels == 0], s=12, color="blue", label="Normal")
-    plt.scatter(temps[labels == 1], hums[labels == 1], s=12, color="orange", label="Anomaly")
+    plt.scatter(temps[labels == 1], hums[labels == 1], s=12, color="red", label="Anomaly")
 
     plt.title("Decision Boundary — Model Normal vs Anomaly Region")
     plt.xlabel("Temperature (°C)")
     plt.ylabel("Humidity (%)")
+    plt.xlim(10, 60)
     plt.legend()
 
     out_path = os.path.join(out_dir, f"{PREFIX}_decision_region.png")
