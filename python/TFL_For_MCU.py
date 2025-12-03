@@ -20,7 +20,7 @@ model = tf.keras.Sequential([
 ])
 
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-history = model.fit(X_Train, Y_Train, epochs=500, batch_size=32, validation_data=(X_Test, Y_Test))
+history = model.fit(X_Train, Y_Train, epochs=1000, batch_size=64, validation_data=(X_Test, Y_Test))
 model.save('saved_model/' + PREFIX + '.keras')
 
 converter = tf.lite.TFLiteConverter.from_keras_model(model)
