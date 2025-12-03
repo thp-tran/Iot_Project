@@ -8,6 +8,7 @@ void led_blinky(void *pvParameters)
 
     while (1)
     {
+        // Kiểm tra trạng thái LED từ queue
         if (xQueuePeek(qToggleState, &toggleData, 0) == pdTRUE)
         {
             if (!toggleData.toggleStateLed1)
@@ -18,15 +19,14 @@ void led_blinky(void *pvParameters)
             }
         }
 
-        // Blink theo độ ẩm
+        // Blink theo nhiệt độ
         if (xSemaphoreTake(semSensorData, portMAX_DELAY) == pdTRUE)
         {
-            xSemaphoreGive(semSensorData);
             if (xQueuePeek(qSensorData, &recv0, 0) == pdTRUE)
             {
-
-                // Humidity 60 - 70 → LED OFF
-                if (recv0.humidity >= 60 && recv0.humidity <= 70)
+                xSemaphoreGive(semSensorData);
+                // Temperature < 20 → Blink rất chậm
+                if (recv0.temperature < 20)
                 {
                     digitalWrite(LED_GPIO, HIGH);
                     vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -34,8 +34,8 @@ void led_blinky(void *pvParameters)
                     vTaskDelay(1000 / portTICK_PERIOD_MS);
                 }
 
-                // Humidity >= 70 → Blink chậm
-                else if (recv0.humidity >= 70)
+                // Temperature 20-30 → Blink chậm
+                else if (recv0.temperature > 20 && recv0.temperature <= 30)
                 {
                     digitalWrite(LED_GPIO, HIGH);
                     vTaskDelay(500 / portTICK_PERIOD_MS);
@@ -43,13 +43,13 @@ void led_blinky(void *pvParameters)
                     vTaskDelay(500 / portTICK_PERIOD_MS);
                 }
 
-                // Humidity < 60 → Blink nhanh
-                else
+                // Temperature 30-40 → Blink nhanh
+                else if (recv0.temperature > 30 && recv0.temperature <= 40)
                 {
                     digitalWrite(LED_GPIO, HIGH);
-                    vTaskDelay(100 / portTICK_PERIOD_MS);
+                    vTaskDelay(250 / portTICK_PERIOD_MS);
                     digitalWrite(LED_GPIO, LOW);
-                    vTaskDelay(100 / portTICK_PERIOD_MS);
+                    vTaskDelay(250 / portTICK_PERIOD_MS);
                 }
             }
         }

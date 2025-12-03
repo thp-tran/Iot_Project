@@ -23,13 +23,13 @@ void temp_humi_monitor(void *pvParameters){
                 lcd.print(" %");
         
                 // Condition states on LCD
-                if(recv0.temperature < 30){
+                if(recv0.temperature < 20){
+                    lcd.setCursor(10,0);
+                    lcd.print(" COOL");
+                }
+                else if(recv0.temperature >= 20 && recv0.temperature <= 30){
                     lcd.setCursor(10,0);
                     lcd.print(" OK");
-                }
-                else if(recv0.temperature < 40){
-                    lcd.setCursor(10,0);
-                    lcd.print(" WARN");
                 }
                 else{
                     lcd.setCursor(10,0);

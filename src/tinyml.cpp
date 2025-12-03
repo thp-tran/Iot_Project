@@ -55,6 +55,7 @@ void tiny_ml_task(void *pvParameters)
 
         if(xSemaphoreTake(semSensorData, portMAX_DELAY) == pdTRUE){
             if(xQueuePeek(qSensorData, &recv0, 0) == pdTRUE){
+                xSemaphoreGive(semSensorData);
                 // Prepare input data (e.g., sensor readings)
                 // For a simple example, let's assume a single float input
                 input->data.f[0] = recv0.temperature; // Example temperature value

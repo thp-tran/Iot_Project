@@ -13,6 +13,7 @@ void neo_blinky(void *pvParameters)
 
     while (1)
     {
+        // Kiểm tra trạng thái LED từ queue
         if (xQueuePeek(qToggleState, &toggleData, 0) == pdTRUE)
         {
             if (!toggleData.toggleStateLed2)
@@ -23,7 +24,7 @@ void neo_blinky(void *pvParameters)
                 continue; // Skip blinking if both LEDs are off
             }
         }
-
+        // Set color based on humidity
         if (xSemaphoreTake(semSensorData, portMAX_DELAY) == pdTRUE)
         {
             if (xQueuePeek(qSensorData, &recv, portMAX_DELAY) == pdTRUE)
