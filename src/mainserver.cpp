@@ -2,6 +2,8 @@
 #include <WebServer.h>
 #include <WiFi.h>
 
+bool led1_state = false;
+bool led2_state = false;
 bool isAPMode = true;
 
 WebServer server(80);
@@ -9,18 +11,9 @@ WebServer server(80);
 unsigned long connect_start_ms = 0;
 bool connecting = false;
 
-String mainPage() {
-    float hum = -1, temp = -1;
-    SensorData recv;
-
-  if (xQueuePeek(qSensorData, &recv, 0) == pdTRUE)
-  {
-    hum = recv.humidity;
-    temp = recv.temperature;
-  }
-
-
-    return R"rawliteral(
+String mainPage()
+{
+  return R"rawliteral(
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -191,8 +184,6 @@ String mainPage() {
 
 </div>
 
-
-
 <script>
 
    function toggleLED(id) {
@@ -322,6 +313,23 @@ setInterval(() => {
       drawChart(document.getElementById("humSVG"),  humData, "#60a5fa", 20, 90);
     });
 }, 2000);
+
+  window.addEventListener("load", () => {
+  fetch("/ledstate")
+    .then(res => res.json())
+    .then(s => {
+      // LED1 sync
+      document.getElementById("l1").innerText = s.led1;
+      document.getElementById("l1").style.color =
+        (s.led1 === "ON") ? "#10b981" : "#facc15";
+
+      // LED2 sync
+      document.getElementById("l2").innerText = s.led2;
+      document.getElementById("l2").style.color =
+        (s.led2 === "ON") ? "#10b981" : "#facc15";
+    });
+});
+
 </script>
 
 </body>
@@ -464,129 +472,163 @@ document.getElementById('wifiForm').onsubmit = function(e){
 
 // ========== Handlers ==========
 void handleRoot() { server.send(200, "text/html", mainPage()); }
+void handleLEDState()
+{
+  ToggleData data;
+  xQueuePeek(qToggleState, &data, 0);
 
-void handleToggle() {
-    int led = server.arg("led").toInt();
-    ToggleData data;
-    xQueuePeek(qToggleState, &data, 0);
-
-    if (led == 1) {
-        data.toggleStateLed1 = !data.toggleStateLed1;
-    } else if (led == 2) {
-        data.toggleStateLed2 = !data.toggleStateLed2;
-    }
-    xQueueOverwrite(qToggleState, &data);
-
-    server.send(200, "application/json",
-                "{\"led1\":\"" + String(data.toggleStateLed1 ? "ON" : "OFF") +
-                    "\",\"led2\":\"" + String(data.toggleStateLed2 ? "ON" : "OFF") + "\"}");
+  String json = "{\"led1\":\"" + String(data.toggleStateLed1 ? "ON" : "OFF") +
+                "\",\"led2\":\"" + String(data.toggleStateLed2 ? "ON" : "OFF") +
+                "\"}";
+  server.send(200, "application/json", json);
 }
 
-void handleSensors() {
-    SensorData data;
-    float t = 0, h = 0;
+void handleToggle()
+{
+  int led = server.arg("led").toInt();
+  // Lấy trạng thái hiện tại từ queue
+  ToggleData data;
+  xQueuePeek(qToggleState, &data, 0);
+  // Đảo trạng thái LED tương ứng
+  if (led == 1)
+  {
+    data.toggleStateLed1 = !data.toggleStateLed1;
+  }
+  else if (led == 2)
+  {
+    data.toggleStateLed2 = !data.toggleStateLed2;
+  }
+  // Ghi trạng thái mới vào queue
+  xQueueOverwrite(qToggleState, &data);
+  // Trả về trạng thái mới dưới dạng JSON
+  server.send(200, "application/json",
+              "{\"led1\":\"" + String(data.toggleStateLed1 ? "ON" : "OFF") +
+                  "\",\"led2\":\"" + String(data.toggleStateLed2 ? "ON" : "OFF") + "\"}");
+}
+
+void handleSensors()
+{
+  SensorData data;
+  float t = 0, h = 0;
 
   // Lấy dữ liệu cảm biến mới nhất từ queue (nếu có)
   if (xSemaphoreTake(semSensorData, portMAX_DELAY) == pdTRUE)
   {
     if (xQueuePeek(qSensorData, &data, 0) == pdTRUE)
     {
-      xSemaphoreGive(semSensorData);
+      xSemaphoreGive(semSensorData); // Trả lại semaphore ngay sau khi đọc
       t = data.temperature;
       h = data.humidity;
     }
-    // Tạo JSON trả về
-    String json = "{\"temp\":" + String(t) + ",\"hum\":" + String(h) + "}";
-    server.send(200, "application/json", json);
-}
+  }
+  // Tạo JSON trả về
+  String json = "{\"temp\":" + String(t) + ",\"hum\":" + String(h) + "}";
+  server.send(200, "application/json", json);
 }
 
 void handleSettings() { server.send(200, "text/html", settingsPage()); }
 
-void handleConnect() {
-    wifi_ssid = server.arg("ssid");
-    wifi_password = server.arg("pass");
-    server.send(200, "text/plain", "Connecting....");
-    isAPMode = false;
-    connecting = true;
-    connect_start_ms = millis();
-    connectToWiFi();
+void handleConnect()
+{
+  wifi_ssid = server.arg("ssid");
+  wifi_password = server.arg("pass");
+  server.send(200, "text/plain", "Connecting....");
+  isAPMode = false;
+  connecting = true;
+  connect_start_ms = millis();
+  connectToWiFi();
 }
 
 // ========== WiFi ==========
-void setupServer() {
-    server.on("/", HTTP_GET, handleRoot);
-    server.on("/toggle", HTTP_GET, handleToggle);
-    server.on("/sensors", HTTP_GET, handleSensors);
-    server.on("/settings", HTTP_GET, handleSettings);
-    server.on("/connect", HTTP_GET, handleConnect);
-    server.begin();
+void setupServer()
+{
+  server.on("/", HTTP_GET, handleRoot);
+  server.on("/ledstate", HTTP_GET, handleLEDState);
+  server.on("/toggle", HTTP_GET, handleToggle);
+  server.on("/sensors", HTTP_GET, handleSensors);
+  server.on("/settings", HTTP_GET, handleSettings);
+  server.on("/connect", HTTP_GET, handleConnect);
+  server.begin();
 }
 
-void startAP() {
-    WiFi.mode(WIFI_AP);
-    WiFi.softAP(ssid.c_str(), password.c_str());
-    Serial.print("AP IP address: ");
-    Serial.println(WiFi.softAPIP());
-    isAPMode = true;
-    connecting = false;
+void startAP()
+{
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(ssid.c_str(), password.c_str());
+  Serial.print("AP IP address: ");
+  Serial.println(WiFi.softAPIP());
+  isAPMode = true;
+  connecting = false;
 }
 
-void connectToWiFi() {
-    WiFi.mode(WIFI_STA);
-    if (wifi_password.isEmpty()) {
-        WiFi.begin(wifi_ssid.c_str());
-    } else {
-        WiFi.begin(wifi_ssid.c_str(), wifi_password.c_str());
-    }
-    Serial.print("Connecting to: ");
-    Serial.print(wifi_ssid.c_str());
+void connectToWiFi()
+{
+  WiFi.mode(WIFI_STA);
+  if (wifi_password.isEmpty())
+  {
+    WiFi.begin(wifi_ssid.c_str());
+  }
+  else
+  {
+    WiFi.begin(wifi_ssid.c_str(), wifi_password.c_str());
+  }
+  Serial.print("Connecting to: ");
+  Serial.print(wifi_ssid.c_str());
 
-    Serial.print(" Password: ");
-    Serial.print(wifi_password.c_str());
+  Serial.print(" Password: ");
+  Serial.print(wifi_password.c_str());
 }
 
 // ========== Main task ==========
-void main_server_task(void *pvParameters) {
-    pinMode(BOOT_PIN, INPUT_PULLUP);
+void main_server_task(void *pvParameters)
+{
+  pinMode(BOOT_PIN, INPUT_PULLUP);
 
-    startAP();
-    setupServer();
+  startAP();
+  setupServer();
 
-    while (1) {
-        server.handleClient();
+  while (1)
+  {
+    server.handleClient();
 
-        // BOOT Button to switch to AP Mode
-        if (digitalRead(BOOT_PIN) == LOW) {
-            vTaskDelay(100);
-            if (digitalRead(BOOT_PIN) == LOW) {
-                if (!isAPMode) {
-                    startAP();
-                    setupServer();
-                }
-            }
+    // BOOT Button to switch to AP Mode
+    if (digitalRead(BOOT_PIN) == LOW)
+    {
+      vTaskDelay(100);
+      if (digitalRead(BOOT_PIN) == LOW)
+      {
+        if (!isAPMode)
+        {
+          startAP();
+          setupServer();
         }
-
-        // STA Mode
-        if (connecting) {
-            if (WiFi.status() == WL_CONNECTED) {
-                Serial.print("STA IP address: ");
-                Serial.println(WiFi.localIP());
-                isWifiConnected = true; // Internet access
-
-                xSemaphoreGive(xBinarySemaphoreInternet);
-
-                isAPMode = false;
-                connecting = false;
-            } else if (millis() - connect_start_ms > 10000) { // timeout 10s
-                Serial.println("WiFi connect failed! Back to AP.");
-                startAP();
-                setupServer();
-                connecting = false;
-                isWifiConnected = false;
-            }
-        }
-
-        vTaskDelay(20); // avoid watchdog reset
+      }
     }
+
+    // STA Mode
+    if (connecting)
+    {
+      if (WiFi.status() == WL_CONNECTED)
+      {
+        Serial.print("STA IP address: ");
+        Serial.println(WiFi.localIP());
+        isWifiConnected = true; // Internet access
+
+        xSemaphoreGive(xBinarySemaphoreInternet);
+
+        isAPMode = false;
+        connecting = false;
+      }
+      else if (millis() - connect_start_ms > 10000)
+      { // timeout 10s
+        Serial.println("WiFi connect failed! Back to AP.");
+        startAP();
+        setupServer();
+        connecting = false;
+        isWifiConnected = false;
+      }
+    }
+
+    vTaskDelay(20); // avoid watchdog reset
+  }
 }
