@@ -17,8 +17,8 @@ model = tf.keras.Sequential([
 ])
 
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-model.fit(X_Train, Y_Train, epochs=50, batch_size=8, validation_data=(X_Test, Y_Test))
-model.save(PREFIX + '.h5')
+model.fit(X_Train, Y_Train, epochs=500, batch_size=64, validation_data=(X_Test, Y_Test))
+model.save(PREFIX + '.keras')
 
 converter = tf.lite.TFLiteConverter.from_keras_model(model)
 converter.optimizations = [tf.lite.Optimize.DEFAULT]
@@ -28,7 +28,7 @@ with open(PREFIX + '.tflite', 'wb') as f:
     f.write(tflite_model)
     
 tflite_path = PREFIX + '.tflite'
-output_header_path = 'src/' + PREFIX + '.h'
+output_header_path = 'include/' + PREFIX + '.h'
 
 with open(tflite_path, 'rb') as tflite_file:
     tflite_content = tflite_file.read()
