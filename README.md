@@ -82,7 +82,7 @@ This project implements an IoT environmental monitoring system that:
 - See `python/requirements.txt` for complete list
 
 ### MQTT Gateway
-- Node.js 14.x or higher
+- Node.js 18.x or higher
 - npm or yarn
 
 ## 📁 Project Structure
